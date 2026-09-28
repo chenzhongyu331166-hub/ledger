@@ -2,20 +2,23 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>记账本</title>
 <style>
   :root{
     --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
     --txt:#e2e8f0; --dim:#94a3b8; --acc:#22d3ee; --up:#34d399; --down:#f87171;
-    --warn:#fbbf24; --radius:14px;
+    --warn:#fbbf24; --radius:14px; --tabh:56px;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);
-    font-family:"Microsoft YaHei",system-ui,-apple-system,sans-serif;font-size:14px}
-  .wrap{max-width:960px;margin:0 auto;padding:16px 14px 60px}
-  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px}
-  h1{font-size:20px;margin:0;letter-spacing:1px}
+    font-family:"Microsoft YaHei",system-ui,-apple-system,sans-serif;font-size:14px;
+    -webkit-tap-highlight-color:transparent}
+  .wrap{max-width:960px;margin:0 auto;padding:14px 14px calc(var(--tabh) + 64px)}
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    margin-bottom:12px;position:sticky;top:0;background:linear-gradient(var(--bg) 80%,transparent);
+    padding:4px 0 8px;z-index:5}
+  h1{font-size:19px;margin:0;letter-spacing:1px}
   h1 span{color:var(--acc)}
   .monthbar{display:flex;gap:6px;align-items:center}
   .monthbar button{background:var(--panel);border:1px solid var(--line);color:var(--txt);
@@ -23,8 +26,56 @@
   .monthbar button:hover{border-color:var(--acc)}
   .monthbar input{background:var(--panel);border:1px solid var(--line);color:var(--txt);
     border-radius:8px;padding:6px 8px;font-family:inherit}
+
+  /* ---- 页面切换 ---- */
+  .page{display:none}
+  .page.on{display:block}
+
+  /* ---- 汇总条 ---- */
+  .sumstrip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .sumstrip .s{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:10px 12px;text-align:center}
+  .sumstrip .s .k{font-size:12px;color:var(--dim)}
+  .sumstrip .s .v{font-size:17px;font-weight:800;margin-top:2px}
+  .v.in{color:var(--up)} .v.out{color:var(--down)} .v.net{color:var(--acc)}
+
+  /* ---- 流水（按日分组） ---- */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .filters select{width:auto;min-width:104px;background:var(--panel);border:1px solid var(--line);
+    color:var(--txt);border-radius:8px;padding:7px 8px;font-family:inherit;font-size:13px}
+  .txcount{margin-left:auto;align-self:center;font-size:12px;color:var(--dim)}
+  .txday{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    margin-bottom:10px;overflow:hidden}
+  .dayhead{display:flex;justify-content:space-between;align-items:center;
+    padding:9px 14px;background:var(--panel2);font-size:13px;font-weight:700}
+  .dayhead .ds{font-size:12px;font-weight:600;margin-left:8px}
+  .ds.out{color:var(--down)} .ds.in{color:var(--up)}
+  .txrow{display:flex;align-items:center;gap:11px;padding:11px 14px;
+    border-top:1px dashed var(--line)}
+  .txrow:first-of-type{border-top:none}
+  .ico{width:36px;height:36px;border-radius:50%;flex:none;display:flex;align-items:center;
+    justify-content:center;font-weight:800;font-size:15px;
+    background:var(--panel2);border:1px solid var(--line)}
+  .txrow .mid{flex:1;min-width:0}
+  .txrow .mid b{font-size:14px}
+  .txrow .mid .sub{font-size:12px;color:var(--dim);margin-top:3px;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  .txrow .right{text-align:right;flex:none}
+  .amt{font-weight:800;white-space:nowrap;font-size:15px}
+  .amt.out{color:var(--down)} .amt.in{color:var(--up)} .amt.tf{color:#a5b4fc}
+  .ops{margin-top:2px;visibility:hidden}
+  .txrow:hover .ops,.txrow:active .ops{visibility:visible}
+  .pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;
+    background:var(--panel2);border:1px solid var(--line)}
+  .rowbtn{background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px;
+    padding:2px 4px;font-family:inherit}
+  .rowbtn:hover{color:var(--acc)}
+  .rowbtn.del:hover{color:var(--down)}
+  .empty{color:var(--dim);text-align:center;padding:26px 14px;font-size:13px}
+
+  /* ---- 卡片/面板 ---- */
   .grid{display:grid;gap:12px}
-  .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     padding:14px;position:relative;overflow:hidden}
   .card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--acc)}
@@ -40,61 +91,99 @@
   .stat{background:var(--panel2);border-radius:10px;padding:12px}
   .stat .k{font-size:12px;color:var(--dim)}
   .stat .v{font-size:20px;font-weight:800;margin-top:4px}
-  .v.in{color:var(--up)} .v.out{color:var(--down)} .v.net{color:var(--acc)}
-  .bar{background:#0b1220;border-radius:999px;height:14px;overflow:hidden;margin-top:8px;
+  .bar{background:#0b1220;border-radius:999px;height:12px;overflow:hidden;margin-top:7px;
     border:1px solid var(--line)}
   .bar i{display:block;height:100%;border-radius:999px;transition:width .4s;
     background:linear-gradient(90deg,#22d3ee,#34d399)}
   .bar i.mid{background:linear-gradient(90deg,#fbbf24,#fb923c)}
   .bar i.over{background:linear-gradient(90deg,#f87171,#ef4444)}
-  .catrow{padding:10px 0;border-bottom:1px dashed var(--line)}
+  .catrow{padding:9px 0;border-bottom:1px dashed var(--line)}
   .catrow:last-child{border-bottom:none}
   .catrow .t{display:flex;justify-content:space-between;font-size:13px}
   .catrow .t b{font-weight:600}
   .catrow .t .num{color:var(--dim)}
   .catrow .t .num em{font-style:normal;color:var(--txt);font-weight:700}
-  .empty{color:var(--dim);text-align:center;padding:18px;font-size:13px}
-  form.add{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-  label{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}
-  select,input[type=text],input[type=number],input[type=date]{
-    width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
-    border-radius:8px;padding:9px 10px;font-family:inherit;font-size:14px}
-  select:focus,input:focus{outline:none;border-color:var(--acc)}
-  .types{display:flex;gap:6px;grid-column:1/-1}
+  .rankbar{background:#0b1220;border-radius:999px;height:10px;overflow:hidden;margin-top:6px;
+    border:1px solid var(--line)}
+  .rankbar i{display:block;height:100%;border-radius:999px;
+    background:linear-gradient(90deg,#f87171,#fb923c)}
+
+  /* ---- 记一笔（底部弹层） ---- */
+  .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tabh) + 22px +
+    env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:50%;border:none;
+    background:linear-gradient(135deg,#22d3ee,#34d399);color:#06283d;font-size:30px;font-weight:800;
+    box-shadow:0 6px 18px rgba(34,211,238,.35);cursor:pointer;z-index:20;line-height:1}
+  .fab:active{transform:translateX(-50%) scale(.94)}
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;
+    transition:.2s;z-index:30}
+  .mask.on{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:min(100%,640px);
+    background:var(--panel);border:1px solid var(--line);border-bottom:none;
+    border-radius:18px 18px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom,0px));
+    transition:.24s;z-index:31;max-height:92vh;overflow-y:auto}
+  .sheet.on{transform:translate(-50%,0)}
+  .sheet .grip{width:38px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 10px}
+  .sheet h2{margin:0 0 12px;font-size:16px;display:flex;justify-content:space-between;align-items:center}
+  .sheet h2 .x{background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;
+    padding:0 4px;font-family:inherit}
+  .types{display:flex;gap:6px;margin-bottom:12px}
   .types button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--dim);
-    padding:9px;border-radius:8px;cursor:pointer;font-weight:600}
+    padding:10px;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;font-size:14px}
   .types button.on{background:#083344;border-color:var(--acc);color:var(--acc)}
   .types button.on.in{background:#052e24;border-color:var(--up);color:var(--up)}
   .types button.on.tf{background:#1e1b4b;border-color:#818cf8;color:#a5b4fc}
-  .actions{grid-column:1/-1;display:flex;gap:8px}
-  .btn{border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:700;
+  .bigamt{width:100%;background:transparent;border:none;border-bottom:2px solid var(--line);
+    color:var(--txt);font-size:34px;font-weight:800;text-align:center;padding:8px 0 12px;
+    font-family:inherit;outline:none;margin-bottom:12px}
+  .bigamt:focus{border-color:var(--acc)}
+  .bigamt::placeholder{color:#475569}
+  #catChips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .chip{background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+    padding:8px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-family:inherit}
+  .chip.on{background:#083344;border-color:var(--acc);color:var(--acc);font-weight:700}
+  .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .frow.one{grid-template-columns:1fr}
+  label{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}
+  select,input[type=text],input[type=number],input[type=date]{
+    width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:10px;font-family:inherit;font-size:14px}
+  select:focus,input:focus{outline:none;border-color:var(--acc)}
+  .actions{display:flex;gap:8px}
+  .btn{border:none;border-radius:8px;padding:12px 18px;font-size:14px;font-weight:700;
     cursor:pointer;font-family:inherit}
   .btn.primary{background:var(--acc);color:#06283d;flex:1}
   .btn.ghost{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
   .btn:hover{filter:brightness(1.1)}
-  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-  .filters select{width:auto;min-width:110px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th{color:var(--dim);font-weight:500;text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);font-size:12px}
-  td{padding:9px 6px;border-bottom:1px dashed var(--line);vertical-align:middle}
-  tr:last-child td{border-bottom:none}
-  .amt{font-weight:800;text-align:right;white-space:nowrap}
-  .amt.out{color:var(--down)} .amt.in{color:var(--up)} .amt.tf{color:#a5b4fc}
-  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;
-    background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
-  .rowbtn{background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px;padding:2px 5px;font-family:inherit}
-  .rowbtn:hover{color:var(--acc)}
-  .rowbtn.del:hover{color:var(--down)}
+
+  /* ---- 设置 ---- */
   .settings{display:grid;gap:10px}
-  .setrow{display:flex;gap:8px;align-items:center;background:var(--panel2);border-radius:10px;padding:10px;flex-wrap:wrap}
+  .setrow{display:flex;gap:8px;align-items:center;background:var(--panel2);border-radius:10px;
+    padding:10px;flex-wrap:wrap}
   .setrow .dot{width:10px;height:10px;border-radius:50%;flex:none}
-  .setrow input{flex:1;min-width:90px}
+  .setrow input{flex:1;min-width:80px}
   .setrow input.short{max-width:110px;flex:none}
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media(max-width:760px){.two{grid-template-columns:1fr}}
-  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+  .sec{margin-top:16px}
+  .addrow{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* ---- 底部 Tab ---- */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(var(--tabh) +
+    env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);
+    background:rgba(15,23,42,.96);border-top:1px solid var(--line);display:grid;
+    grid-template-columns:1fr 1fr 76px 1fr 1fr;z-index:25;backdrop-filter:blur(8px)}
+  .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    color:var(--dim);font-size:11px;cursor:pointer;user-select:none;position:relative;
+    background:none;border:none;font-family:inherit;padding:0}
+  .tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  .tab.on{color:var(--acc)}
+  .tab .badge{position:absolute;top:7px;right:calc(50% - 20px);width:8px;height:8px;
+    border-radius:50%;background:var(--down);display:none}
+  .tab .badge.on{display:block}
+  .tabgap{}
+
+  .toast{position:fixed;left:50%;bottom:calc(var(--tabh) + 84px);transform:translateX(-50%);
     background:#083344;border:1px solid var(--acc);color:var(--acc);
-    padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:9}
+    padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:40}
   .toast.show{opacity:1}
   .toast.err{border-color:var(--down);color:var(--down);background:#3f1d1d}
   dialog{background:var(--panel);color:var(--txt);border:1px solid var(--line);
@@ -102,12 +191,17 @@
   dialog::backdrop{background:rgba(0,0,0,.6)}
   dialog h3{margin:0 0 14px;font-size:15px}
   dialog .row{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+  @media(max-width:520px){
+    .frow{grid-template-columns:1fr}
+    h1{font-size:17px}
+    .sumstrip .v{font-size:15px}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>记账<span>本</span> · 三卡收支与预算</h1>
+    <h1>记账<span>本</span></h1>
     <div class="monthbar">
       <button id="prevM" title="上个月">◀</button>
       <input type="month" id="month">
@@ -115,102 +209,166 @@
     </div>
   </header>
 
-  <div class="grid cards" id="cards"></div>
-
-  <div class="grid" style="margin-top:12px">
-    <div class="panel">
-      <h2>本月概览 <span class="hint" id="ovMonth"></span></h2>
-      <div class="stats">
-        <div class="stat"><div class="k">收入</div><div class="v in" id="sIn">0.00</div></div>
-        <div class="stat"><div class="k">支出</div><div class="v out" id="sOut">0.00</div></div>
-        <div class="stat"><div class="k">结余</div><div class="v net" id="sNet">0.00</div></div>
-        <div class="stat"><div class="k">预算剩余</div><div class="v" id="sLeft">0.00</div></div>
-      </div>
+  <!-- ============ 明细（默认页） ============ -->
+  <section class="page on" id="page-tx">
+    <div class="sumstrip">
+      <div class="s"><div class="k">支出</div><div class="v out" id="stOut">0.00</div></div>
+      <div class="s"><div class="k">收入</div><div class="v in" id="stIn">0.00</div></div>
+      <div class="s"><div class="k">结余</div><div class="v net" id="stNet">0.00</div></div>
     </div>
+    <div class="filters">
+      <select id="fltType">
+        <option value="">全部类型</option>
+        <option value="expense">支出</option>
+        <option value="income">收入</option>
+        <option value="transfer">转账</option>
+      </select>
+      <select id="fltAcc"><option value="">全部账户</option></select>
+      <select id="fltCat"><option value="">全部分类</option></select>
+      <span class="txcount" id="txCount"></span>
+    </div>
+    <div id="txList"></div>
+    <div class="empty" id="txEmpty" style="display:none">本月还没有流水，点下方「+」记一笔</div>
+  </section>
 
-    <div class="two">
+  <!-- ============ 统计 ============ -->
+  <section class="page" id="page-stats">
+    <div class="grid">
       <div class="panel">
-        <h2>记一笔</h2>
-        <form class="add" id="txForm">
-          <div class="types">
-            <button type="button" class="on" data-t="expense">支出</button>
-            <button type="button" data-t="income">收入</button>
-            <button type="button" data-t="transfer">转账</button>
-          </div>
-          <div><label>金额（元）</label><input type="number" step="0.01" min="0" id="fAmount" placeholder="0.00" required></div>
-          <div><label>日期</label><input type="date" id="fDate"></div>
-          <div><label id="lAcc">账户</label><select id="fAccount"></select></div>
-          <div id="wrapTo" style="display:none"><label>转入账户</label><select id="fTo"></select></div>
-          <div id="wrapCat"><label>分类</label><select id="fCategory"></select></div>
-          <div><label>备注</label><input type="text" id="fNote" maxlength="120" placeholder="选填"></div>
-          <div class="actions">
-            <button class="btn primary" type="submit" id="submitBtn">记入</button>
-            <button class="btn ghost" type="button" id="cancelEdit" style="display:none">取消</button>
-          </div>
-        </form>
+        <h2>本月概览 <span class="hint" id="ovMonth"></span></h2>
+        <div class="stats">
+          <div class="stat"><div class="k">收入</div><div class="v in" id="sIn">0.00</div></div>
+          <div class="stat"><div class="k">支出</div><div class="v out" id="sOut">0.00</div></div>
+          <div class="stat"><div class="k">结余</div><div class="v net" id="sNet">0.00</div></div>
+          <div class="stat"><div class="k">预算剩余</div><div class="v" id="sLeft">0.00</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>分类排行 <span class="hint">本月支出</span></h2>
+        <div id="catRank"><div class="empty">本月还没有支出</div></div>
+      </div>
+      <div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="panel">
+          <h2>预算进度 <span class="hint">分类/月</span></h2>
+          <div id="budgets"><div class="empty">还没设预算，去「设置」页填上限</div></div>
+        </div>
+        <div class="panel">
+          <h2>账户支出 <span class="hint">本月</span></h2>
+          <div id="accSpend"><div class="empty">本月还没有支出</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 账户 ============ -->
+  <section class="page" id="page-accounts">
+    <div class="grid cards" id="cards"></div>
+    <div class="panel" style="margin-top:12px">
+      <h2>说明 <span class="hint">余额 = 期初 + 流水</span></h2>
+      <div style="font-size:13px;line-height:1.9;color:var(--dim)">
+        卡片红字=对账差额（银行余额和账本对不上，可能有漏记的免密支付），
+        点「一键补记」把漏掉的钱补成流水，或「忽略」。期初余额和卡号后6位在「设置」页改。
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 设置 ============ -->
+  <section class="page" id="page-settings">
+    <div class="grid">
+      <div class="panel">
+        <h2>账户管理 <span class="hint">名称 · 期初 · 卡号后6位</span></h2>
+        <div class="settings" id="accList"></div>
+        <div class="addrow" style="margin-top:10px">
+          <input type="text" id="newAccName" placeholder="新账户名称（如 农业银行）">
+          <input type="text" id="newAccTag" placeholder="备注" style="max-width:110px">
+          <input type="number" id="newAccInit" placeholder="期初余额" style="max-width:110px">
+          <button class="btn ghost" id="addAcc" type="button">添加账户</button>
+        </div>
       </div>
 
       <div class="panel">
-        <h2>预算进度 <span class="hint">分类 / 月</span></h2>
-        <div id="budgets"><div class="empty">还没设预算，去下面「设置」填各分类上限</div></div>
+        <h2>分类预算 <span class="hint">元/月，0=不设</span></h2>
+        <div id="budgetSet"></div>
       </div>
-    </div>
 
-    <div class="panel">
-      <h2>流水 <span class="hint" id="txCount"></span></h2>
-      <div class="filters">
-        <select id="fltType">
-          <option value="">全部类型</option>
-          <option value="expense">支出</option>
-          <option value="income">收入</option>
-          <option value="transfer">转账</option>
-        </select>
-        <select id="fltAcc"><option value="">全部账户</option></select>
-        <select id="fltCat"><option value="">全部分类</option></select>
+      <div class="panel" id="devicePanel" style="display:none">
+        <h2>手机自动入账 <span class="hint">通知读取 + 屏幕读取</span></h2>
+        <div style="font-size:13px;line-height:2">
+          <div id="devNotify">通知读取（银行短信/微信支付）：检测中…</div>
+          <div id="devScreen">屏幕读取（支付画面，密码框自动跳过）：检测中…</div>
+        </div>
+        <div class="addrow" style="margin-top:10px">
+          <button class="btn ghost" id="devNotifyBtn" type="button">开启通知读取</button>
+          <button class="btn ghost" id="devScreenBtn" type="button">开启屏幕读取</button>
+          <button class="btn ghost" id="devRefreshBtn" type="button">刷新状态</button>
+          <button class="btn primary" id="devSimBtn" type="button">模拟支付入账 0.01</button>
+        </div>
+        <div style="font-size:12px;color:var(--dim);margin-top:10px;line-height:1.8">
+          数据全部存在手机本机，电脑不用开。银行短信/微信支付/支付画面自动识别入账，
+          5 分钟内同额自动去重；短信里带「余额」会自动校准该卡余额，对不上会红字提示差额。
+        </div>
       </div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>日期</th><th>分类/备注</th><th>账户</th><th style="text-align:right">金额</th><th></th></tr></thead>
-          <tbody id="txBody"></tbody>
-        </table>
-      </div>
-      <div class="empty" id="txEmpty" style="display:none">本月还没有流水</div>
-    </div>
 
-    <div class="panel">
-      <h2>设置 <span class="hint">账户 · 期初余额 · 分类预算</span></h2>
-      <div class="settings" id="accList"></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <input type="text" id="newAccName" placeholder="新账户名称（如 农业银行）">
-        <input type="text" id="newAccTag" placeholder="备注（如 储蓄卡）" style="max-width:130px">
-        <input type="number" id="newAccInit" placeholder="期初余额" style="max-width:110px">
-        <button class="btn ghost" id="addAcc" type="button">添加账户</button>
-      </div>
-      <div style="margin-top:18px" id="budgetSet"></div>
-      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn ghost" id="exportBtn" type="button">导出 JSON 备份</button>
-        <button class="btn ghost" id="helpBtn" type="button">说明</button>
+      <div class="panel">
+        <h2>备份与帮助</h2>
+        <div class="addrow">
+          <button class="btn ghost" id="exportBtn" type="button">导出 JSON 备份</button>
+          <button class="btn ghost" id="helpBtn" type="button">使用说明</button>
+        </div>
       </div>
     </div>
+  </section>
+</div>
 
-    <div class="panel" id="devicePanel" style="display:none">
-      <h2>手机自动入账 <span class="hint">通知读取 + 屏幕读取</span></h2>
-      <div style="font-size:13px;line-height:2">
-        <div id="devNotify">通知读取（银行短信/微信支付）：检测中…</div>
-        <div id="devScreen">屏幕读取（支付画面，密码框自动跳过）：检测中…</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button class="btn ghost" id="devNotifyBtn" type="button">开启通知读取</button>
-        <button class="btn ghost" id="devScreenBtn" type="button">开启屏幕读取</button>
-        <button class="btn ghost" id="devRefreshBtn" type="button">刷新状态</button>
-        <button class="btn primary" id="devSimBtn" type="button">模拟支付入账 0.01</button>
-      </div>
-      <div style="font-size:12px;color:var(--dim);margin-top:10px;line-height:1.8">
-        数据全部存在手机本机，电脑不用开。银行短信/微信支付/支付画面自动识别入账，
-        5 分钟内同额自动去重；短信里带「余额」会自动校准该卡余额。
-      </div>
+<!-- 记一笔 FAB -->
+<button class="fab" id="fabAdd" title="记一笔">+</button>
+
+<!-- 底部导航 -->
+<nav class="tabbar">
+  <button class="tab on" data-page="tx">
+    <svg viewBox="0 0 24 24"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.3"/><circle cx="4.5" cy="12" r="1.3"/><circle cx="4.5" cy="18" r="1.3"/></svg>
+    明细
+  </button>
+  <button class="tab" data-page="stats">
+    <svg viewBox="0 0 24 24"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="5"/><line x1="19" y1="20" x2="19" y2="9"/></svg>
+    统计
+  </button>
+  <span class="tabgap"></span>
+  <button class="tab" data-page="accounts" id="tabAccounts">
+    <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><line x1="3" y1="10.5" x2="21" y2="10.5"/><line x1="6.5" y1="15" x2="11" y2="15"/></svg>
+    账户
+    <span class="badge" id="accBadge"></span>
+  </button>
+  <button class="tab" data-page="settings">
+    <svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="12" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>
+    设置
+  </button>
+</nav>
+
+<!-- 记一笔底部弹层 -->
+<div class="mask" id="sheetMask"></div>
+<div class="sheet" id="addSheet">
+  <div class="grip"></div>
+  <h2><span id="sheetTitle">记一笔</span><button class="x" id="sheetClose" type="button">×</button></h2>
+  <form id="txForm">
+    <div class="types">
+      <button type="button" class="on" data-t="expense">支出</button>
+      <button type="button" data-t="income">收入</button>
+      <button type="button" data-t="transfer">转账</button>
     </div>
-  </div>
+    <input class="bigamt" type="number" step="0.01" min="0" id="fAmount" placeholder="0.00" required inputmode="decimal">
+    <div id="catChips"></div>
+    <div class="frow">
+      <div><label id="lAcc">账户</label><select id="fAccount"></select></div>
+      <div id="wrapTo" style="display:none"><label>转入账户</label><select id="fTo"></select></div>
+      <div><label>日期</label><input type="date" id="fDate"></div>
+      <div><label>备注</label><input type="text" id="fNote" maxlength="120" placeholder="选填"></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit" id="submitBtn">记入</button>
+      <button class="btn ghost" type="button" id="cancelEdit" style="display:none">取消</button>
+    </div>
+  </form>
 </div>
 
 <dialog id="helpDlg">
@@ -220,14 +378,14 @@
     · 三张卡余额 = 期初余额 + 收入 − 支出 ± 转账；短信报出「余额」时会自动校准期初。<br>
     · 预算填 0 即删除该分类预算；进度条黄=已用&gt;70%，红=超支。<br>
     · 转账用于卡间调度，不算收支。<br>
-    · 短信报出「余额」时自动校准；若和账本对不上（漏记的免密支付等），卡片红字提示差额，可一键补记——不会无声消失。
+    · 余额和账本对不上（漏记的免密支付等），「账户」页红字提示差额，可一键补记——不会无声消失。
   </div>
   <h3 style="margin-top:16px">自动入账怎么开</h3>
   <div style="font-size:13px;line-height:1.9;color:var(--dim)">
-    1. 点「开启通知读取」+「开启屏幕读取」，在系统设置里把「记账助手」两个开关打开。<br>
+    1. 「设置」页点「开启通知读取」+「开启屏幕读取」，在系统设置里把「记账本」两个开关打开。<br>
     2. 之后银行短信、微信/支付宝通知、支付成功画面会自动识别入账（5 分钟内同额自动去重）。<br>
-    3. 归属卡：短信里的银行名 → 卡号后 6 位 → 默认中国银行（可在设置里填卡号后 6 位）。<br>
-    4. 点「模拟支付入账 0.01」验证链路，流水里出现即成功。
+    3. 归属卡：短信里的银行名 → 卡号后 6 位 → 默认中国银行（可在「设置」页填卡号后 6 位）。<br>
+    4. 点「模拟支付入账 0.01」验证链路，「明细」页出现即成功。
   </div>
   <div id="apkHelp" style="display:none">
     <h3 style="margin-top:16px">电脑网页版</h3>
@@ -242,7 +400,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
-let S = null, curType = 'expense', editingId = null;
+let S = null, curType = 'expense', curCat = '', editingId = null, wantAdd = false;
 const yuan = n => (n<0?'-':'') + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
 function toast(msg, err){
@@ -274,17 +432,30 @@ async function api(path, method='GET', body){
   return j;
 }
 
+/* ---- 页面切换 ---- */
+function go(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on', p.id==='page-'+page));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.page===page));
+  $('fabAdd').style.display = page==='settings' ? 'none' : '';
+  try{ localStorage.setItem('ledger.tab', page); }catch(e){}
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.tab').forEach(t=> t.onclick = ()=>go(t.dataset.page));
+
 async function refresh(){
   const m = $('month').value || monthNow();
   try{ S = await api('/api/state?month='+m); }catch(e){ return toast(e.message, true); }
-  renderCards(); renderOverview(); renderBudgets(); renderTx(); renderSettings(); fillSelects();
+  renderCards(); renderOverview(); renderBudgets(); renderRank(); renderAccSpend(); renderTx(); renderSettings(); fillSelects();
+  $('accBadge').classList.toggle('on', S.accounts.some(a=>a.adjCount>0));
+  if(wantAdd){ wantAdd = false; openSheet(); }
 }
 
 function accName(id){ const a = S.accounts.find(x=>x.id===id); return a?a.name:id; }
 function accColor(id){ const a = S.accounts.find(x=>x.id===id); return a?a.color:'#64748b'; }
 
+/* ---- 账户卡片 ---- */
 function renderCards(){
-  const m = $('month').value, spend = S.summary.by_account;
+  const spend = S.summary.by_account;
   let total = 0;
   const html = S.accounts.map(a=>{
     total += a.balance;
@@ -308,20 +479,64 @@ function renderCards(){
     <div class="sub">期初余额 + 全部流水累计</div></div>`;
 }
 
+/* ---- 概览 ---- */
 function renderOverview(){
   const s = S.summary;
   $('ovMonth').textContent = s.month;
   $('sIn').textContent = yuan(s.income);
   $('sOut').textContent = yuan(s.expense);
   $('sNet').textContent = yuan(s.balance);
+  $('stIn').textContent = yuan(s.income);
+  $('stOut').textContent = yuan(s.expense);
+  $('stNet').textContent = yuan(s.balance);
   const left = s.budget_total - s.expense;
-  $('sLeft').textContent = yuan(left);
-  $('sLeft').style.color = left < 0 ? 'var(--down)' : 'var(--txt)';
+  if(s.budget_total > 0){
+    $('sLeft').textContent = yuan(left);
+    $('sLeft').style.color = left < 0 ? 'var(--down)' : 'var(--txt)';
+    $('sLeft').style.fontSize = '';
+  }else{
+    $('sLeft').textContent = '未设预算';
+    $('sLeft').style.color = 'var(--dim)';
+    $('sLeft').style.fontSize = '15px';
+  }
 }
 
+/* ---- 账户支出排行 ---- */
+function renderAccSpend(){
+  const spend = S.summary.by_account || {};
+  const rows = S.accounts.map(a=>({a, v: spend[a.id] || 0}))
+    .filter(r=>r.v > 0).sort((x,y)=>y.v-x.v);
+  if(!rows.length){ $('accSpend').innerHTML = '<div class="empty">本月还没有支出</div>'; return; }
+  const tot = rows.reduce((s,r)=>s+r.v, 0) || 1;
+  $('accSpend').innerHTML = rows.map(r=>{
+    const pct = Math.round(r.v / tot * 100);
+    return `<div class="catrow">
+      <div class="t"><b>${r.a.name}</b>
+        <span class="num"><em>${yuan(r.v)}</em> · ${pct}%</span></div>
+      <div class="rankbar"><i style="width:${pct}%;background:linear-gradient(90deg,${r.a.color},${r.a.color}99)"></i></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- 分类排行 ---- */
+function renderRank(){
+  const rows = S.summary.categories.filter(c=>c.used>0).sort((a,b)=>b.used-a.used);
+  if(!rows.length){ $('catRank').innerHTML = '<div class="empty">本月还没有支出</div>'; return; }
+  const tot = rows.reduce((s,c)=>s+c.used,0) || 1;
+  $('catRank').innerHTML = rows.map(c=>{
+    const pct = Math.round(c.used/tot*100);
+    return `<div class="catrow">
+      <div class="t"><b>${c.category}</b>
+        <span class="num"><em>${yuan(c.used)}</em> · ${pct}%</span></div>
+      <div class="rankbar"><i style="width:${Math.min(pct,100)}%"></i></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- 预算进度 ---- */
 function renderBudgets(){
   const rows = S.summary.categories.filter(c=>c.limit>0);
-  if(!rows.length){ $('budgets').innerHTML = '<div class="empty">还没设预算，去下面「设置」填各分类上限</div>'; return; }
+  if(!rows.length){ $('budgets').innerHTML = '<div class="empty">还没设预算，去「设置」页填上限</div>'; return; }
   $('budgets').innerHTML = rows.map(c=>{
     const pct = c.pct==null?0:c.pct, w = Math.min(pct,100);
     const cls = pct>=100?'over':(pct>=70?'mid':'');
@@ -333,30 +548,56 @@ function renderBudgets(){
   }).join('');
 }
 
+/* ---- 流水（按日分组） ---- */
 function renderTx(){
   const ft = $('fltType').value, fa = $('fltAcc').value, fc = $('fltCat').value;
   let list = S.transactions.filter(t =>
     (!ft || t.type===ft) && (!fa || t.account===fa || t.to===fa) && (!fc || t.category===fc));
+  list = list.slice().sort((a,b)=> a.date===b.date
+    ? String(b.created||'').localeCompare(String(a.created||''))
+    : String(b.date).localeCompare(String(a.date)));
   $('txCount').textContent = list.length + ' 条';
   $('txEmpty').style.display = list.length ? 'none':'block';
   const typeName = {expense:'支出', income:'收入', transfer:'转账'};
-  $('txBody').innerHTML = list.map(t=>{
-    const sign = t.type==='income'?'in':(t.type==='expense'?'out':'tf');
-    const signMark = t.type==='income'?'+':(t.type==='expense'?'−':'→');
-    const target = t.type==='transfer' ? `${accName(t.account)} → ${accName(t.to)}` : accName(t.account);
-    const tgtColor = t.type==='transfer' ? accColor(t.to) : accColor(t.account);
-    return `<tr>
-      <td style="white-space:nowrap">${t.date.slice(5)}</td>
-      <td><b>${t.category||typeName[t.type]}</b>${t.note?`<div style="color:var(--dim);font-size:12px">${t.note}</div>`:''}</td>
-      <td><span class="pill" style="border-color:${tgtColor};color:${tgtColor}">${target}</span></td>
-      <td class="amt ${sign}">${signMark}${yuan(t.amount)}</td>
-      <td style="white-space:nowrap;text-align:right">
-        <button class="rowbtn" onclick="editTx('${t.id}')">编辑</button>
-        <button class="rowbtn del" onclick="delTx('${t.id}')">删除</button>
-      </td></tr>`;
+  const wd = ['日','一','二','三','四','五','六'];
+  const groups = {};
+  list.forEach(t=>{ (groups[t.date] = groups[t.date] || []).push(t); });
+  $('txList').innerHTML = Object.keys(groups).sort().reverse().map(d=>{
+    const items = groups[d];
+    let din = 0, dout = 0;
+    const rows = items.map(t=>{
+      if(t.type==='income') din += t.amount;
+      else if(t.type==='expense') dout += t.amount;
+      const sign = t.type==='income'?'in':(t.type==='expense'?'out':'tf');
+      const signMark = t.type==='income'?'+':(t.type==='expense'?'−':'→');
+      const target = t.type==='transfer' ? `${accName(t.account)} → ${accName(t.to)}` : accName(t.account);
+      const cat = t.category || typeName[t.type];
+      return `<div class="txrow">
+        <div class="ico" style="border-color:${accColor(t.account)};color:${accColor(t.account)}">${(cat||'·').slice(0,1)}</div>
+        <div class="mid"><b>${cat}</b>
+          <div class="sub">${t.note?t.note+' · ':''}<span class="pill" style="border-color:${accColor(t.account)}">${target}</span></div>
+        </div>
+        <div class="right">
+          <span class="amt ${sign}">${signMark}${yuan(t.amount)}</span>
+          <div class="ops">
+            <button class="rowbtn" onclick="editTx('${t.id}')">编辑</button>
+            <button class="rowbtn del" onclick="delTx('${t.id}')">删除</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    const dt = new Date(d + 'T00:00:00');
+    const sums = [
+      dout ? `<span class="ds out">支 ${yuan(dout)}</span>` : '',
+      din ? `<span class="ds in">收 ${yuan(din)}</span>` : ''
+    ].filter(Boolean).join('');
+    return `<div class="txday">
+      <div class="dayhead"><span>${d.slice(5)} 星期${wd[dt.getDay()]||''}</span><span>${sums}</span></div>
+      ${rows}</div>`;
   }).join('');
 }
 
+/* ---- 设置页 ---- */
 function renderSettings(){
   $('accList').innerHTML = S.accounts.map(a=>`
     <div class="setrow" data-id="${a.id}">
@@ -368,8 +609,7 @@ function renderSettings(){
       <button class="rowbtn" onclick="saveAcc('${a.id}')">保存</button>
       <button class="rowbtn del" onclick="delAcc('${a.id}')">删除</button>
     </div>`).join('');
-  $('budgetSet').innerHTML = '<label style="margin-bottom:6px">分类预算（元/月，0=不设）</label>' +
-    S.expense_categories.map(c=>{
+  $('budgetSet').innerHTML = S.expense_categories.map(c=>{
       const v = S.budgets[c] || 0;
       return `<div class="setrow" style="margin-bottom:6px">
         <span style="min-width:64px">${c}</span>
@@ -378,6 +618,14 @@ function renderSettings(){
     }).join('') +
     `<div style="margin-top:8px"><button class="btn ghost" id="saveBud" type="button">保存预算</button></div>`;
   $('saveBud').onclick = saveBudgets;
+}
+
+function renderCatChips(){
+  const cats = !S ? [] : (curType==='income' ? (S.income_categories||[]) : (S.expense_categories||[]));
+  if(!cats.includes(curCat)) curCat = cats[0] || '';
+  $('catChips').innerHTML = curType==='transfer' ? '' :
+    cats.map(c=>`<button type="button" class="chip${c===curCat?' on':''}" data-c="${c}">${c}</button>`).join('');
+  $('catChips').querySelectorAll('.chip').forEach(b=> b.onclick = ()=>{ curCat = b.dataset.c; renderCatChips(); });
 }
 
 function fillSelects(){
@@ -391,14 +639,11 @@ function fillSelects(){
     if(other) $('fTo').value = other.id;
   }
   $('fltAcc').innerHTML = '<option value="">全部账户</option>' + accOpts;
-  const cats = curType==='income' ? S.income_categories : S.expense_categories;
-  const keepC = $('fCategory').value;
-  $('fCategory').innerHTML = cats.map(c=>`<option>${c}</option>`).join('');
-  if(cats.includes(keepC)) $('fCategory').value = keepC;
   const keepFC = $('fltCat').value;
   $('fltCat').innerHTML = '<option value="">全部分类</option>' +
     S.expense_categories.concat(S.income_categories).map(c=>`<option>${c}</option>`).join('');
   if([...$('fltCat').options].some(o=>o.value===keepFC)) $('fltCat').value = keepFC;
+  renderCatChips();
 }
 
 function setType(t){
@@ -408,12 +653,26 @@ function setType(t){
     b.className = on ? 'on'+(t==='income'?' in':(t==='transfer'?' tf':'')) : '';
   });
   $('wrapTo').style.display = t==='transfer' ? '' : 'none';
-  $('wrapCat').style.display = t==='transfer' ? 'none' : '';
   $('lAcc').textContent = t==='transfer' ? '转出账户' : '账户';
-  fillSelects();
+  curCat = '';
+  if(S) fillSelects(); else renderCatChips();
 }
-
 document.querySelectorAll('.types button').forEach(b=> b.onclick = ()=>setType(b.dataset.t));
+
+/* ---- 记一笔弹层 ---- */
+function openSheet(){
+  $('sheetMask').classList.add('on');
+  $('addSheet').classList.add('on');
+  setTimeout(()=>{ if(!editingId) $('fAmount').focus(); }, 250);
+}
+function closeSheet(){
+  $('sheetMask').classList.remove('on');
+  $('addSheet').classList.remove('on');
+  if(editingId){ editingId = null; resetForm(); }
+}
+$('fabAdd').onclick = ()=>{ if(editingId){ editingId = null; resetForm(); } openSheet(); };
+$('sheetClose').onclick = closeSheet;
+$('sheetMask').onclick = closeSheet;
 
 $('txForm').onsubmit = async e=>{
   e.preventDefault();
@@ -423,18 +682,19 @@ $('txForm').onsubmit = async e=>{
     date: $('fDate').value,
     account: $('fAccount').value,
     to: $('fTo').value,
-    category: $('fCategory').value,
+    category: curType==='transfer' ? '' : curCat,
     note: $('fNote').value
   };
   try{
     if(editingId){ await api('/api/transaction/'+editingId, 'PUT', payload); toast('已更新'); }
     else { await api('/api/transaction', 'POST', payload); toast('已记入'); }
-    resetForm(); await refresh();
+    resetForm(); closeSheet(); go('tx'); await refresh();
   }catch(err){ toast(err.message, true); }
 };
 
 function resetForm(){
-  editingId = null; $('submitBtn').textContent = '记入'; $('cancelEdit').style.display='none';
+  editingId = null; $('submitBtn').textContent = '记入';
+  $('cancelEdit').style.display='none'; $('sheetTitle').textContent = '记一笔';
   $('fAmount').value=''; $('fNote').value=''; $('fDate').value = todayStr();
 }
 $('cancelEdit').onclick = resetForm;
@@ -444,10 +704,11 @@ window.editTx = async id=>{
   setType(t.type);
   $('fAmount').value = t.amount; $('fDate').value = t.date;
   $('fAccount').value = t.account; if(t.to) $('fTo').value = t.to;
-  if(t.category) $('fCategory').value = t.category;
+  if(t.category){ curCat = t.category; renderCatChips(); }
   $('fNote').value = t.note || '';
-  editingId = id; $('submitBtn').textContent = '保存修改'; $('cancelEdit').style.display='';
-  window.scrollTo({top:0, behavior:'smooth'});
+  editingId = id; $('submitBtn').textContent = '保存修改';
+  $('cancelEdit').style.display=''; $('sheetTitle').textContent = '编辑流水';
+  openSheet();
 };
 window.delTx = async id=>{
   if(!confirm('删除这条流水？')) return;
@@ -550,8 +811,8 @@ if(window.LedgerBridge){
   $('devSimBtn').onclick = async ()=>{
     try{
       await api('/api/simulate', 'POST', {});
-      toast('已入账 0.01 元，见下方流水');
-      refresh();
+      toast('已入账 0.01 元，见「明细」页');
+      go('tx'); refresh();
     }catch(e){ toast(e.message, true); }
   };
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshDevice(); });
@@ -565,6 +826,12 @@ $('fAccount').onchange = ()=>{ if(curType==='transfer'){ const o=S.accounts.find
 
 $('month').value = monthNow();
 $('fDate').value = todayStr();
+try{
+  const hp = location.hash.replace('#','');
+  const last = ['tx','stats','accounts','settings'].includes(hp) ? hp : localStorage.getItem('ledger.tab');
+  if(last) go(last);
+  if(hp === 'add') wantAdd = true;
+}catch(e){}
 setType('expense');
 refresh();
 refreshDevice();
