@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>记账本</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
+    --txt:#e2e8f0; --dim:#94a3b8; --acc:#22d3ee; --up:#34d399; --down:#f87171;
+    --warn:#fbbf24; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:"Microsoft YaHei",system-ui,-apple-system,sans-serif;font-size:14px}
+  .wrap{max-width:960px;margin:0 auto;padding:16px 14px 60px}
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+  h1{font-size:20px;margin:0;letter-spacing:1px}
+  h1 span{color:var(--acc)}
+  .monthbar{display:flex;gap:6px;align-items:center}
+  .monthbar button{background:var(--panel);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:6px 10px;cursor:pointer}
+  .monthbar button:hover{border-color:var(--acc)}
+  .monthbar input{background:var(--panel);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:6px 8px;font-family:inherit}
+  .grid{display:grid;gap:12px}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px;position:relative;overflow:hidden}
+  .card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--acc)}
+  .card .nm{font-weight:700;font-size:15px}
+  .card .tag{font-size:12px;color:var(--dim);margin-left:6px}
+  .card .bal{font-size:24px;font-weight:800;margin-top:8px;letter-spacing:.5px}
+  .card .sub{font-size:12px;color:var(--dim);margin-top:6px}
+  .card .sub b{color:var(--down);font-weight:600}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .panel h2{font-size:15px;margin:0 0 12px;display:flex;justify-content:space-between;align-items:center}
+  .panel h2 .hint{font-size:12px;color:var(--dim);font-weight:400}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{background:var(--panel2);border-radius:10px;padding:12px}
+  .stat .k{font-size:12px;color:var(--dim)}
+  .stat .v{font-size:20px;font-weight:800;margin-top:4px}
+  .v.in{color:var(--up)} .v.out{color:var(--down)} .v.net{color:var(--acc)}
+  .bar{background:#0b1220;border-radius:999px;height:14px;overflow:hidden;margin-top:8px;
+    border:1px solid var(--line)}
+  .bar i{display:block;height:100%;border-radius:999px;transition:width .4s;
+    background:linear-gradient(90deg,#22d3ee,#34d399)}
+  .bar i.mid{background:linear-gradient(90deg,#fbbf24,#fb923c)}
+  .bar i.over{background:linear-gradient(90deg,#f87171,#ef4444)}
+  .catrow{padding:10px 0;border-bottom:1px dashed var(--line)}
+  .catrow:last-child{border-bottom:none}
+  .catrow .t{display:flex;justify-content:space-between;font-size:13px}
+  .catrow .t b{font-weight:600}
+  .catrow .t .num{color:var(--dim)}
+  .catrow .t .num em{font-style:normal;color:var(--txt);font-weight:700}
+  .empty{color:var(--dim);text-align:center;padding:18px;font-size:13px}
+  form.add{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  label{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}
+  select,input[type=text],input[type=number],input[type=date]{
+    width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:9px 10px;font-family:inherit;font-size:14px}
+  select:focus,input:focus{outline:none;border-color:var(--acc)}
+  .types{display:flex;gap:6px;grid-column:1/-1}
+  .types button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+    padding:9px;border-radius:8px;cursor:pointer;font-weight:600}
+  .types button.on{background:#083344;border-color:var(--acc);color:var(--acc)}
+  .types button.on.in{background:#052e24;border-color:var(--up);color:var(--up)}
+  .types button.on.tf{background:#1e1b4b;border-color:#818cf8;color:#a5b4fc}
+  .actions{grid-column:1/-1;display:flex;gap:8px}
+  .btn{border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:700;
+    cursor:pointer;font-family:inherit}
+  .btn.primary{background:var(--acc);color:#06283d;flex:1}
+  .btn.ghost{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
+  .btn:hover{filter:brightness(1.1)}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .filters select{width:auto;min-width:110px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{color:var(--dim);font-weight:500;text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);font-size:12px}
+  td{padding:9px 6px;border-bottom:1px dashed var(--line);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .amt{font-weight:800;text-align:right;white-space:nowrap}
+  .amt.out{color:var(--down)} .amt.in{color:var(--up)} .amt.tf{color:#a5b4fc}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;
+    background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+  .rowbtn{background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px;padding:2px 5px;font-family:inherit}
+  .rowbtn:hover{color:var(--acc)}
+  .rowbtn.del:hover{color:var(--down)}
+  .settings{display:grid;gap:10px}
+  .setrow{display:flex;gap:8px;align-items:center;background:var(--panel2);border-radius:10px;padding:10px;flex-wrap:wrap}
+  .setrow .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .setrow input{flex:1;min-width:90px}
+  .setrow input.short{max-width:110px;flex:none}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.two{grid-template-columns:1fr}}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+    background:#083344;border:1px solid var(--acc);color:var(--acc);
+    padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:9}
+  .toast.show{opacity:1}
+  .toast.err{border-color:var(--down);color:var(--down);background:#3f1d1d}
+  dialog{background:var(--panel);color:var(--txt);border:1px solid var(--line);
+    border-radius:var(--radius);padding:20px;min-width:min(92vw,360px)}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  dialog h3{margin:0 0 14px;font-size:15px}
+  dialog .row{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>记账<span>本</span> · 三卡收支与预算</h1>
+    <div class="monthbar">
+      <button id="prevM" title="上个月">◀</button>
+      <input type="month" id="month">
+      <button id="nextM" title="下个月">▶</button>
+    </div>
+  </header>
+
+  <div class="grid cards" id="cards"></div>
+
+  <div class="grid" style="margin-top:12px">
+    <div class="panel">
+      <h2>本月概览 <span class="hint" id="ovMonth"></span></h2>
+      <div class="stats">
+        <div class="stat"><div class="k">收入</div><div class="v in" id="sIn">0.00</div></div>
+        <div class="stat"><div class="k">支出</div><div class="v out" id="sOut">0.00</div></div>
+        <div class="stat"><div class="k">结余</div><div class="v net" id="sNet">0.00</div></div>
+        <div class="stat"><div class="k">预算剩余</div><div class="v" id="sLeft">0.00</div></div>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="panel">
+        <h2>记一笔</h2>
+        <form class="add" id="txForm">
+          <div class="types">
+            <button type="button" class="on" data-t="expense">支出</button>
+            <button type="button" data-t="income">收入</button>
+            <button type="button" data-t="transfer">转账</button>
+          </div>
+          <div><label>金额（元）</label><input type="number" step="0.01" min="0" id="fAmount" placeholder="0.00" required></div>
+          <div><label>日期</label><input type="date" id="fDate"></div>
+          <div><label id="lAcc">账户</label><select id="fAccount"></select></div>
+          <div id="wrapTo" style="display:none"><label>转入账户</label><select id="fTo"></select></div>
+          <div id="wrapCat"><label>分类</label><select id="fCategory"></select></div>
+          <div><label>备注</label><input type="text" id="fNote" maxlength="120" placeholder="选填"></div>
+          <div class="actions">
+            <button class="btn primary" type="submit" id="submitBtn">记入</button>
+            <button class="btn ghost" type="button" id="cancelEdit" style="display:none">取消</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>预算进度 <span class="hint">分类 / 月</span></h2>
+        <div id="budgets"><div class="empty">还没设预算，去下面「设置」填各分类上限</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>流水 <span class="hint" id="txCount"></span></h2>
+      <div class="filters">
+        <select id="fltType">
+          <option value="">全部类型</option>
+          <option value="expense">支出</option>
+          <option value="income">收入</option>
+          <option value="transfer">转账</option>
+        </select>
+        <select id="fltAcc"><option value="">全部账户</option></select>
+        <select id="fltCat"><option value="">全部分类</option></select>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>日期</th><th>分类/备注</th><th>账户</th><th style="text-align:right">金额</th><th></th></tr></thead>
+          <tbody id="txBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="txEmpty" style="display:none">本月还没有流水</div>
+    </div>
+
+    <div class="panel">
+      <h2>设置 <span class="hint">账户 · 期初余额 · 分类预算</span></h2>
+      <div class="settings" id="accList"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input type="text" id="newAccName" placeholder="新账户名称（如 农业银行）">
+        <input type="text" id="newAccTag" placeholder="备注（如 储蓄卡）" style="max-width:130px">
+        <input type="number" id="newAccInit" placeholder="期初余额" style="max-width:110px">
+        <button class="btn ghost" id="addAcc" type="button">添加账户</button>
+      </div>
+      <div style="margin-top:18px" id="budgetSet"></div>
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost" id="exportBtn" type="button">导出 JSON 备份</button>
+        <button class="btn ghost" id="helpBtn" type="button">说明</button>
+      </div>
+    </div>
+
+    <div class="panel" id="devicePanel" style="display:none">
+      <h2>手机自动入账 <span class="hint">通知读取 + 屏幕读取</span></h2>
+      <div style="font-size:13px;line-height:2">
+        <div id="devNotify">通知读取（银行短信/微信支付）：检测中…</div>
+        <div id="devScreen">屏幕读取（支付画面，密码框自动跳过）：检测中…</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn ghost" id="devNotifyBtn" type="button">开启通知读取</button>
+        <button class="btn ghost" id="devScreenBtn" type="button">开启屏幕读取</button>
+        <button class="btn ghost" id="devRefreshBtn" type="button">刷新状态</button>
+        <button class="btn primary" id="devSimBtn" type="button">模拟支付入账 0.01</button>
+      </div>
+      <div style="font-size:12px;color:var(--dim);margin-top:10px;line-height:1.8">
+        数据全部存在手机本机，电脑不用开。银行短信/微信支付/支付画面自动识别入账，
+        5 分钟内同额自动去重；短信里带「余额」会自动校准该卡余额。
+      </div>
+    </div>
+  </div>
+</div>
+
+<dialog id="helpDlg">
+  <h3>使用说明</h3>
+  <div style="font-size:13px;line-height:1.9;color:var(--dim)">
+    · 数据只存在本机（手机 App 私有目录 / 电脑 <b style="color:var(--txt)">data/ledger.json</b>），不上传任何服务器。<br>
+    · 三张卡余额 = 期初余额 + 收入 − 支出 ± 转账；短信报出「余额」时会自动校准期初。<br>
+    · 预算填 0 即删除该分类预算；进度条黄=已用&gt;70%，红=超支。<br>
+    · 转账用于卡间调度，不算收支。<br>
+    · 短信报出「余额」时自动校准；若和账本对不上（漏记的免密支付等），卡片红字提示差额，可一键补记——不会无声消失。
+  </div>
+  <h3 style="margin-top:16px">自动入账怎么开</h3>
+  <div style="font-size:13px;line-height:1.9;color:var(--dim)">
+    1. 点「开启通知读取」+「开启屏幕读取」，在系统设置里把「记账助手」两个开关打开。<br>
+    2. 之后银行短信、微信/支付宝通知、支付成功画面会自动识别入账（5 分钟内同额自动去重）。<br>
+    3. 归属卡：短信里的银行名 → 卡号后 6 位 → 默认中国银行（可在设置里填卡号后 6 位）。<br>
+    4. 点「模拟支付入账 0.01」验证链路，流水里出现即成功。
+  </div>
+  <div id="apkHelp" style="display:none">
+    <h3 style="margin-top:16px">电脑网页版</h3>
+    <div style="font-size:13px;line-height:1.9;color:var(--dim)">
+      手机浏览器打开 <b style="color:var(--acc)" id="apkUrl">http://10.194.139.127:5100/app.apk</b> 可下载手机端 App。
+    </div>
+  </div>
+  <div class="row"><button class="btn primary" onclick="helpDlg.close()">知道了</button></div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let S = null, curType = 'expense', editingId = null;
+const yuan = n => (n<0?'-':'') + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+function toast(msg, err){
+  const el = $('toast'); el.textContent = msg; el.className = 'toast show' + (err?' err':'');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.className='toast', 2200);
+}
+
+function monthNow(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function shiftMonth(m, k){
+  let [y,mo] = m.split('-').map(Number); mo += k;
+  while(mo<1){mo+=12;y--;} while(mo>12){mo-=12;y++;}
+  return y+'-'+String(mo).padStart(2,'0');
+}
+const todayStr = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+
+async function api(path, method='GET', body){
+  if(window.LedgerBridge){
+    let res = window.LedgerBridge.call(path, method, JSON.stringify(body||{}));
+    let j;
+    try{ j = JSON.parse(res); }catch(e){ throw new Error('桥接返回异常'); }
+    if(j && j.error) throw new Error(j.error);
+    return j;
+  }
+  const opt = {method, headers:{'Content-Type':'application/json'}};
+  if(body) opt.body = JSON.stringify(body);
+  const r = await fetch(path, opt);
+  const j = await r.json().catch(()=>({error:'响应异常'}));
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+
+async function refresh(){
+  const m = $('month').value || monthNow();
+  try{ S = await api('/api/state?month='+m); }catch(e){ return toast(e.message, true); }
+  renderCards(); renderOverview(); renderBudgets(); renderTx(); renderSettings(); fillSelects();
+}
+
+function accName(id){ const a = S.accounts.find(x=>x.id===id); return a?a.name:id; }
+function accColor(id){ const a = S.accounts.find(x=>x.id===id); return a?a.color:'#64748b'; }
+
+function renderCards(){
+  const m = $('month').value, spend = S.summary.by_account;
+  let total = 0;
+  const html = S.accounts.map(a=>{
+    total += a.balance;
+    const used = spend[a.id] || 0;
+    const adj = a.adjCount > 0 ? `<div class="sub" style="color:var(--down)">
+        对账差额 ${yuan(a.adj)}（${a.adjCount}笔未记录，可能漏记）
+        <span style="white-space:nowrap">
+          <button class="rowbtn" onclick="fixAdj('${a.id}','record')" style="color:var(--acc)">一键补记</button>
+          <button class="rowbtn" onclick="fixAdj('${a.id}','ignore')">忽略</button>
+        </span></div>` : '';
+    return `<div class="card" style="--c:${a.color}">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:${a.color}"></div>
+      <div class="nm">${a.name}<span class="tag">${a.tag||''}</span></div>
+      <div class="bal">${yuan(a.balance)}</div>
+      <div class="sub">本月支出 <b>${yuan(used)}</b></div>
+      ${adj}
+    </div>`;
+  }).join('');
+  $('cards').innerHTML = html + `<div class="card"><div class="nm">总资产</div>
+    <div class="bal" style="color:var(--acc)">${yuan(total)}</div>
+    <div class="sub">期初余额 + 全部流水累计</div></div>`;
+}
+
+function renderOverview(){
+  const s = S.summary;
+  $('ovMonth').textContent = s.month;
+  $('sIn').textContent = yuan(s.income);
+  $('sOut').textContent = yuan(s.expense);
+  $('sNet').textContent = yuan(s.balance);
+  const left = s.budget_total - s.expense;
+  $('sLeft').textContent = yuan(left);
+  $('sLeft').style.color = left < 0 ? 'var(--down)' : 'var(--txt)';
+}
+
+function renderBudgets(){
+  const rows = S.summary.categories.filter(c=>c.limit>0);
+  if(!rows.length){ $('budgets').innerHTML = '<div class="empty">还没设预算，去下面「设置」填各分类上限</div>'; return; }
+  $('budgets').innerHTML = rows.map(c=>{
+    const pct = c.pct==null?0:c.pct, w = Math.min(pct,100);
+    const cls = pct>=100?'over':(pct>=70?'mid':'');
+    return `<div class="catrow">
+      <div class="t"><b>${c.category}</b>
+        <span class="num"><em>${yuan(c.used)}</em> / ${yuan(c.limit)} · ${c.pct==null?'—':pct+'%'}</span></div>
+      <div class="bar"><i class="${cls}" style="width:${w}%"></i></div>
+    </div>`;
+  }).join('');
+}
+
+function renderTx(){
+  const ft = $('fltType').value, fa = $('fltAcc').value, fc = $('fltCat').value;
+  let list = S.transactions.filter(t =>
+    (!ft || t.type===ft) && (!fa || t.account===fa || t.to===fa) && (!fc || t.category===fc));
+  $('txCount').textContent = list.length + ' 条';
+  $('txEmpty').style.display = list.length ? 'none':'block';
+  const typeName = {expense:'支出', income:'收入', transfer:'转账'};
+  $('txBody').innerHTML = list.map(t=>{
+    const sign = t.type==='income'?'in':(t.type==='expense'?'out':'tf');
+    const signMark = t.type==='income'?'+':(t.type==='expense'?'−':'→');
+    const target = t.type==='transfer' ? `${accName(t.account)} → ${accName(t.to)}` : accName(t.account);
+    const tgtColor = t.type==='transfer' ? accColor(t.to) : accColor(t.account);
+    return `<tr>
+      <td style="white-space:nowrap">${t.date.slice(5)}</td>
+      <td><b>${t.category||typeName[t.type]}</b>${t.note?`<div style="color:var(--dim);font-size:12px">${t.note}</div>`:''}</td>
+      <td><span class="pill" style="border-color:${tgtColor};color:${tgtColor}">${target}</span></td>
+      <td class="amt ${sign}">${signMark}${yuan(t.amount)}</td>
+      <td style="white-space:nowrap;text-align:right">
+        <button class="rowbtn" onclick="editTx('${t.id}')">编辑</button>
+        <button class="rowbtn del" onclick="delTx('${t.id}')">删除</button>
+      </td></tr>`;
+  }).join('');
+}
+
+function renderSettings(){
+  $('accList').innerHTML = S.accounts.map(a=>`
+    <div class="setrow" data-id="${a.id}">
+      <span class="dot" style="background:${a.color}"></span>
+      <input type="text" value="${a.name}" data-f="name" aria-label="账户名">
+      <input type="text" class="short" value="${a.tag||''}" data-f="tag" placeholder="备注">
+      <input type="text" class="short" value="${a.tail||''}" data-f="tail" placeholder="卡号后6位" maxlength="6" style="max-width:96px">
+      <input type="number" step="0.01" class="short" value="${a.initial}" data-f="initial" title="期初余额">
+      <button class="rowbtn" onclick="saveAcc('${a.id}')">保存</button>
+      <button class="rowbtn del" onclick="delAcc('${a.id}')">删除</button>
+    </div>`).join('');
+  $('budgetSet').innerHTML = '<label style="margin-bottom:6px">分类预算（元/月，0=不设）</label>' +
+    S.expense_categories.map(c=>{
+      const v = S.budgets[c] || 0;
+      return `<div class="setrow" style="margin-bottom:6px">
+        <span style="min-width:64px">${c}</span>
+        <input type="number" step="1" min="0" value="${v}" data-cat="${c}" class="bud" style="max-width:130px">
+      </div>`;
+    }).join('') +
+    `<div style="margin-top:8px"><button class="btn ghost" id="saveBud" type="button">保存预算</button></div>`;
+  $('saveBud').onclick = saveBudgets;
+}
+
+function fillSelects(){
+  const accOpts = S.accounts.map(a=>`<option value="${a.id}">${a.name}${a.tag?'（'+a.tag+'）':''}</option>`).join('');
+  const keepA = $('fAccount').value, keepT = $('fTo').value;
+  $('fAccount').innerHTML = accOpts; $('fTo').innerHTML = accOpts;
+  if(S.accounts.some(a=>a.id===keepA)) $('fAccount').value = keepA;
+  if(S.accounts.some(a=>a.id===keepT)) $('fTo').value = keepT;
+  if(!$('fTo').value || $('fTo').value===$('fAccount').value){
+    const other = S.accounts.find(a=>a.id!==$('fAccount').value);
+    if(other) $('fTo').value = other.id;
+  }
+  $('fltAcc').innerHTML = '<option value="">全部账户</option>' + accOpts;
+  const cats = curType==='income' ? S.income_categories : S.expense_categories;
+  const keepC = $('fCategory').value;
+  $('fCategory').innerHTML = cats.map(c=>`<option>${c}</option>`).join('');
+  if(cats.includes(keepC)) $('fCategory').value = keepC;
+  const keepFC = $('fltCat').value;
+  $('fltCat').innerHTML = '<option value="">全部分类</option>' +
+    S.expense_categories.concat(S.income_categories).map(c=>`<option>${c}</option>`).join('');
+  if([...$('fltCat').options].some(o=>o.value===keepFC)) $('fltCat').value = keepFC;
+}
+
+function setType(t){
+  curType = t;
+  document.querySelectorAll('.types button').forEach(b=>{
+    const on = b.dataset.t===t;
+    b.className = on ? 'on'+(t==='income'?' in':(t==='transfer'?' tf':'')) : '';
+  });
+  $('wrapTo').style.display = t==='transfer' ? '' : 'none';
+  $('wrapCat').style.display = t==='transfer' ? 'none' : '';
+  $('lAcc').textContent = t==='transfer' ? '转出账户' : '账户';
+  fillSelects();
+}
+
+document.querySelectorAll('.types button').forEach(b=> b.onclick = ()=>setType(b.dataset.t));
+
+$('txForm').onsubmit = async e=>{
+  e.preventDefault();
+  const payload = {
+    type: curType,
+    amount: $('fAmount').value,
+    date: $('fDate').value,
+    account: $('fAccount').value,
+    to: $('fTo').value,
+    category: $('fCategory').value,
+    note: $('fNote').value
+  };
+  try{
+    if(editingId){ await api('/api/transaction/'+editingId, 'PUT', payload); toast('已更新'); }
+    else { await api('/api/transaction', 'POST', payload); toast('已记入'); }
+    resetForm(); await refresh();
+  }catch(err){ toast(err.message, true); }
+};
+
+function resetForm(){
+  editingId = null; $('submitBtn').textContent = '记入'; $('cancelEdit').style.display='none';
+  $('fAmount').value=''; $('fNote').value=''; $('fDate').value = todayStr();
+}
+$('cancelEdit').onclick = resetForm;
+
+window.editTx = async id=>{
+  const t = S.transactions.find(x=>x.id===id); if(!t) return;
+  setType(t.type);
+  $('fAmount').value = t.amount; $('fDate').value = t.date;
+  $('fAccount').value = t.account; if(t.to) $('fTo').value = t.to;
+  if(t.category) $('fCategory').value = t.category;
+  $('fNote').value = t.note || '';
+  editingId = id; $('submitBtn').textContent = '保存修改'; $('cancelEdit').style.display='';
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+window.delTx = async id=>{
+  if(!confirm('删除这条流水？')) return;
+  try{ await api('/api/transaction/'+id,'DELETE'); toast('已删除'); refresh(); }
+  catch(e){ toast(e.message, true); }
+};
+
+window.saveAcc = async id=>{
+  const row = document.querySelector(`.setrow[data-id="${id}"]`);
+  const payload = {};
+  row.querySelectorAll('input').forEach(i=> payload[i.dataset.f] = i.value);
+  try{ await api('/api/account/'+id,'PUT',payload); toast('账户已保存'); refresh(); }
+  catch(e){ toast(e.message, true); }
+};
+window.delAcc = async id=>{
+  if(!confirm('删除该账户？')) return;
+  try{ await api('/api/account/'+id,'DELETE'); toast('已删除'); refresh(); }
+  catch(e){ toast(e.message, true); }
+};
+window.fixAdj = async (id, action)=>{
+  try{
+    const r = await api('/api/adjust','POST',{account:id, action:action||'record'});
+    toast(action==='ignore' ? '已忽略差额' : ('已补记 '+r.count+' 笔流水'));
+    refresh();
+  }catch(e){ toast(e.message, true); }
+};
+$('addAcc').onclick = async ()=>{
+  try{
+    await api('/api/account','POST',{name:$('newAccName').value, tag:$('newAccTag').value, initial:$('newAccInit').value||0});
+    $('newAccName').value=''; $('newAccTag').value=''; $('newAccInit').value='';
+    toast('账户已添加'); refresh();
+  }catch(e){ toast(e.message, true); }
+};
+
+async function saveBudgets(){
+  try{
+    for(const inp of document.querySelectorAll('input.bud')){
+      await api('/api/budget','POST',{category:inp.dataset.cat, limit:inp.value||0});
+    }
+    toast('预算已保存'); refresh();
+  }catch(e){ toast(e.message, true); }
+}
+
+function copyText(txt, okMsg){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast(ok ? okMsg : '复制失败', !ok);
+  }catch(e){ prompt('手动复制：', txt); }
+}
+
+$('exportBtn').onclick = ()=>{
+  const json = JSON.stringify(S, null, 2);
+  if(window.LedgerBridge){ copyText(json, '账本 JSON 已复制到剪贴板'); return; }
+  const blob = new Blob([json], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ledger-backup-' + todayStr() + '.json';
+  a.click(); URL.revokeObjectURL(a.href);
+};
+
+$('helpBtn').onclick = ()=>{
+  $('helpDlg').showModal();
+  if(window.LedgerBridge){
+    $('apkHelp').style.display = 'none';
+  }else{
+    $('apkHelp').style.display = '';
+    fetch('/api/lan').then(r=>r.json()).then(j=>{
+      $('apkUrl').textContent = 'http://' + j.ip + ':' + j.port + '/app.apk';
+    }).catch(()=>{});
+  }
+};
+
+function setDev(id, label, on){
+  const el = $(id);
+  el.textContent = label + '：' + (on ? '已开启' : '未开启');
+  el.style.color = on ? 'var(--up)' : 'var(--down)';
+}
+async function refreshDevice(){
+  if(!window.LedgerBridge) return;
+  $('devicePanel').style.display = '';
+  try{
+    const st = await api('/device/status');
+    setDev('devNotify', '通知读取（银行短信/微信支付）', !!st.notify);
+    setDev('devScreen', '屏幕读取（支付画面，密码框自动跳过）', !!st.screen);
+  }catch(e){}
+}
+async function openDevice(which){
+  try{ await api('/device/open', 'POST', {which}); }
+  catch(e){ toast(e.message, true); }
+  setTimeout(refreshDevice, 900);
+}
+if(window.LedgerBridge){
+  $('devNotifyBtn').onclick = ()=>openDevice('notify');
+  $('devScreenBtn').onclick = ()=>openDevice('screen');
+  $('devRefreshBtn').onclick = refreshDevice;
+  $('devSimBtn').onclick = async ()=>{
+    try{
+      await api('/api/simulate', 'POST', {});
+      toast('已入账 0.01 元，见下方流水');
+      refresh();
+    }catch(e){ toast(e.message, true); }
+  };
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshDevice(); });
+}
+
+$('month').onchange = refresh;
+$('prevM').onclick = ()=>{ $('month').value = shiftMonth($('month').value, -1); refresh(); };
+$('nextM').onclick = ()=>{ $('month').value = shiftMonth($('month').value, 1); refresh(); };
+['fltType','fltAcc','fltCat'].forEach(id=> $(id).onchange = renderTx);
+$('fAccount').onchange = ()=>{ if(curType==='transfer'){ const o=S.accounts.find(a=>a.id!==$('fAccount').value); if(o) $('fTo').value=o.id; } };
+
+$('month').value = monthNow();
+$('fDate').value = todayStr();
+setType('expense');
+refresh();
+refreshDevice();
+</script>
+</body>
+</html>
