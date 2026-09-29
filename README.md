@@ -1,5 +1,9 @@
 # 记账本 LedgerLink
 
+[![Release](https://img.shields.io/github/v/release/chenzhongyu331166-hub/ledger?style=flat&label=release)](https://github.com/chenzhongyu331166-hub/ledger/releases)
+[![APK](https://img.shields.io/badge/APK-v2.2-brightgreen?logo=android)](https://github.com/chenzhongyu331166-hub/ledger/releases/latest)
+[![GitHub stars](https://img.shields.io/github/stars/chenzhongyu331166-hub/ledger?style=flat&logo=github&label=stars)](https://github.com/chenzhongyu331166-hub/ledger/stargazers)
+
 **本地优先的个人记账工具**：三卡收支/预算 + 手机 App 自动入账（银行短信监听 + 支付画面读屏），数据全存本机，不上传任何服务器。
 
 ![明细页](./shots/ledger-tx.png)
