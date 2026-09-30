@@ -95,7 +95,9 @@ r = post("/api/notify", {"kind": "notify", "pkg": "x", "title": "", "text": "验
 assert r.get("action") == "skipped", r
 print("PASS skip noise")
 
-st = json.load(urllib.request.urlopen("http://127.0.0.1:5100/api/state?month=2026-09"))
+import datetime as _dt
+month = _dt.datetime.now().strftime("%Y-%m")
+st = json.load(urllib.request.urlopen("http://127.0.0.1:5100/api/state?month=" + month))
 bal = {a["id"]: a["balance"] for a in st["accounts"]}
 assert bal["cmb"] == 7964.5, bal
 assert bal["boc"] == -(33 + 45.6), bal
